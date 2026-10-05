@@ -7,7 +7,8 @@ set -uo pipefail
 SSH_PUB="${1:?Ruta a tu clave SSH pública (.pub)}"
 CLOUD_INIT="${2:?Ruta a oracle-cloud-init.sh}"
 NAME="${NAME:-vm-a1-free}"
-OCPUS="${OCPUS:-2}"; MEM="${MEM:-12}"; INTERVAL="${INTERVAL:-60}"
+# Tamaños a probar en cada AD, "OCPU:GB" (el primero que entre gana)
+SIZES="${SIZES:-2:12 1:6}"; INTERVAL="${INTERVAL:-60}"
 
 T=$(awk -F= '/^tenancy/{gsub(/ /,"",$2);print $2;exit}' ~/.oci/config)
 C="${COMPARTMENT_ID:-$T}"
@@ -49,7 +50,9 @@ echo "ADs: ${ADS[*]}"
 n=0
 while :; do
   for AD in "${ADS[@]}"; do
-    n=$((n+1)); echo "[$(date '+%F %T')] intento $n en $AD"
+  for SZ in $SIZES; do
+    OCPUS=${SZ%%:*}; MEM=${SZ##*:}
+    n=$((n+1)); echo "[$(date '+%F %T')] intento $n en $AD ($OCPUS OCPU / $MEM GB)"
     OUT=$(oci compute instance launch -c "$C" --availability-domain "$AD" \
       --shape VM.Standard.A1.Flex --shape-config "{\"ocpus\":$OCPUS,\"memoryInGBs\":$MEM}" \
       --image-id "$IMG" --subnet-id "$SUBNET" --assign-public-ip true \
@@ -66,6 +69,7 @@ while :; do
     elif grep -qiE "LimitExceeded|QuotaExceeded" <<<"$OUT"; then echo "$OUT"; echo "Límite de cuenta alcanzado (¿ya tienes otra A1?)"; exit 1
     else echo "$OUT" | tail -5
     fi
+  done
   done
   sleep "$INTERVAL"
 done
