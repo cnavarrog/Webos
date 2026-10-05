@@ -30,8 +30,9 @@ sudo systemctl enable --now fail2ban
 # Las imágenes Ubuntu de Oracle ya traen iptables que solo abren el 22; no se añade ufw
 # para no romper las reglas de OCI.
 
-# --- VS Code CLI (ARM64): permite conectarte desde tu VS Code vía "code tunnel"
-curl -fsSL "https://code.visualstudio.com/sha/download?build=stable&os=cli-alpine-arm64" -o /tmp/vscode-cli.tar.gz
+# --- VS Code CLI (ARM64 o x64): permite conectarte desde tu VS Code vía "code tunnel"
+case "$(uname -m)" in aarch64) VSARCH=arm64 ;; *) VSARCH=x64 ;; esac
+curl -fsSL "https://code.visualstudio.com/sha/download?build=stable&os=cli-alpine-$VSARCH" -o /tmp/vscode-cli.tar.gz
 sudo tar -xzf /tmp/vscode-cli.tar.gz -C /usr/local/bin && rm /tmp/vscode-cli.tar.gz
 
 # --- Claude Code

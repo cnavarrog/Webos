@@ -47,8 +47,21 @@ echo "Subred: $SUBNET"
 mapfile -t ADS < <(oci iam availability-domain list -c "$T" --query 'data[].name' --raw-output | tr -d '[]", ' | grep -v '^$')
 echo "ADs: ${ADS[*]}"
 
+ya_existe() {
+  local id
+  id=$(oci compute instance list -c "$C" --all --query \
+    'data[?shape==`VM.Standard.A1.Flex` && ("lifecycle-state"==`RUNNING` || "lifecycle-state"==`PROVISIONING` || "lifecycle-state"==`STARTING`)] | [0].id' \
+    --raw-output 2>/dev/null)
+  [ -n "$id" ] && [ "$id" != "null" ] || return 1
+  IP=$(oci compute instance list-vnics --instance-id "$id" --query 'data[0]."public-ip"' --raw-output)
+  echo; echo "✅ VM creada: $id"; echo "IP pública: $IP"
+  echo "SSH: ssh -i ${SSH_PUB%.pub} ubuntu@$IP"
+  return 0
+}
+
 n=0
 while :; do
+  ya_existe && exit 0
   for AD in "${ADS[@]}"; do
   for SZ in $SIZES; do
     OCPUS=${SZ%%:*}; MEM=${SZ##*:}
@@ -66,7 +79,7 @@ while :; do
       exit 0
     elif grep -qi "capacity" <<<"$OUT"; then echo "  sin capacidad"
     elif grep -qi "TooManyRequests" <<<"$OUT"; then echo "  rate limit, esperando más"; sleep 30
-    elif grep -qiE "LimitExceeded|QuotaExceeded" <<<"$OUT"; then echo "$OUT"; echo "Límite de cuenta alcanzado (¿ya tienes otra A1?)"; exit 1
+    elif grep -qiE "LimitExceeded|QuotaExceeded" <<<"$OUT"; then echo "  límite de cuenta alcanzado; compruebo si ya existe una A1"; ya_existe && exit 0
     else echo "$OUT" | tail -5
     fi
   done
