@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Se ejecuta EN la VM (como ubuntu con sudo): endurece el servidor e instala
+# Se ejecuta EN la VM (como cloud-init/root o como ubuntu con sudo): endurece el servidor e instala
 # VS Code (CLI con túnel remoto, ARM64) y Claude Code.
 set -euo pipefail
 
@@ -35,6 +35,6 @@ curl -fsSL "https://code.visualstudio.com/sha/download?build=stable&os=cli-alpin
 sudo tar -xzf /tmp/vscode-cli.tar.gz -C /usr/local/bin && rm /tmp/vscode-cli.tar.gz
 
 # --- Claude Code
-curl -fsSL https://claude.ai/install.sh | bash
+sudo -u ubuntu -H bash -c 'curl -fsSL https://claude.ai/install.sh | bash' || true
 
 echo "Listo. Ejecuta 'code tunnel' para enlazar VS Code y 'claude' para Claude Code."

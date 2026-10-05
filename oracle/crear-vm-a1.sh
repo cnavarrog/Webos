@@ -13,10 +13,15 @@ T=$(awk -F= '/^tenancy/{gsub(/ /,"",$2);print $2;exit}' ~/.oci/config)
 C="${COMPARTMENT_ID:-$T}"
 echo "Región: $(awk -F= '/^region/{print $2;exit}' ~/.oci/config) | Compartment: $C"
 
-# --- Imagen Ubuntu 24.04 ARM más reciente
+# --- Imagen Ubuntu 24.04 ARM más reciente (reintenta: una clave API recién subida
+# puede tardar unos minutos en propagarse y dar 401 intermitentes)
+IMG=""
+for i in $(seq 1 30); do
 IMG=$(oci compute image list -c "$C" --operating-system "Canonical Ubuntu" \
   --operating-system-version "24.04" --shape VM.Standard.A1.Flex \
-  --sort-by TIMECREATED --sort-order DESC --query 'data[0].id' --raw-output)
+  --sort-by TIMECREATED --sort-order DESC --query 'data[0].id' --raw-output 2>/dev/null) && [ -n "$IMG" ] && break
+echo "  esperando autenticación/imagen ($i)..."; sleep 20
+done
 [ -z "$IMG" ] && { echo "No encontré imagen Ubuntu 24.04 ARM"; exit 1; }
 echo "Imagen: $IMG"
 
